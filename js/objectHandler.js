@@ -8,7 +8,7 @@
 
 var OL = new Array();
 
-OL.load = function(name, file) {
+OL.load = function(name, file, drcb) {
 
     OL[name] = new Object();
     var o = OL[name];
@@ -20,18 +20,18 @@ OL.load = function(name, file) {
     request.open("GET", 'models/'+o.file);
     request.onreadystatechange = function () {
         if (request.readyState == 4) {
-            OL.handleLoaded(o, JSON.parse(request.responseText));
+            OL.handleLoaded(o, JSON.parse(request.responseText), drcb);
         }
     }
     request.send();
 
 }
 
-OL.handleLoaded = function( o, data ) {
+OL.handleLoaded = function( o, data, drcb ) {
 
     if (!data.tex || !data.tca || data.tca.lenght == 0) {
         o.tex = false;
-        log("WARNING: OL.handleLoaded() - " + o.name + " has no texture or no texture coordinates");
+        log("WARNING: OL.handleLoaded() - Object \"" + o.name + "\" has no texture or no texture coordinates");
     } else {
         o.tex = gl.createTexture();
         o.tex.img = new Image();
@@ -48,7 +48,7 @@ OL.handleLoaded = function( o, data ) {
     }
 
     if ( !data.vpa || data.vpa.lenght == 0 ) {
-        log("WARNING: OL.handleLoaded() - " + o.name + " has no vertices coordinates");
+        log("WARNING: OL.handleLoaded() - Object \"" + o.name + "\" has no vertices coordinates");
     } else {
         o.vpb = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, o.vpb);
@@ -58,7 +58,7 @@ OL.handleLoaded = function( o, data ) {
     }
 
     if ( !data.na || data.na.lenght == 0 ) {
-        log("WARNING: OL.handleLoaded() - " + o.name + " has no normals");
+        log("WARNING: OL.handleLoaded() - Object \"" + o.name + "\" has no normals");
     } else {
         o.nb = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, o.nb);
@@ -68,7 +68,7 @@ OL.handleLoaded = function( o, data ) {
     }
 
     if ( !data.ia || data.ia.lenght == 0 ) {
-        log("WARNING: OL.handleLoaded() - " + o.name + " has no indices");
+        log("WARNING: OL.handleLoaded() - Object \"" + o.name + "\" has no indices");
     } else {
         o.ib = gl.createBuffer();
         if ( data.iac ) {
@@ -91,6 +91,9 @@ OL.handleLoaded = function( o, data ) {
 
     if ( o.vpb && o.ib )
         o.loaded = true;
+        
+    if ( drcb )
+        setTimeout(drcb(data),0);
 }
 
 

@@ -24,7 +24,7 @@ var player = new Object();
 function webGLStart() {
 
     output = document.getElementById('output');
-    output.height = 100;
+    output.height = 200;
     output.enabled = true;
 
     canvas = document.getElementById('canvas');
@@ -46,16 +46,20 @@ function webGLStart() {
     loadShaders();
 
     IN.init();
+    
+    PE.init();
 
     OL.load("teapot", 'teapot.json');
     OL.load("skybox", 'skybox.json');
     OL.load("vader", 'vader.json');
-    OL.load("terrain", 'terain.json');
+    OL.load("terrain", 'terrain.json', PE.getData);
     OL.load("monkey", 'monkey.json');
 
     player.pos = new Object();
-    player.pos.x = 50.0;
-    player.pos.y = 50.0;
+    player.pos.x = 0.0;
+    player.pos.y = 0.0;
+    player.pos.z = 0.0;
+    player.dir = 0.0;
 
     tick();
 }
@@ -75,7 +79,7 @@ function resize() {
 }
 
 function log(text) {
-    if ( !output ) return;
+    if ( !output.enabled || !output ) return;
     output.innerHTML += text + "\n";
     output.scrollTop = output.scrollHeight;
 }
@@ -231,7 +235,7 @@ function update() {
     }
 
 
-    if( IN.ibd(IN.BUTTON_LEFT) ) {
+    if( IN.ibd(IN.BUTTON_RIGHT) ) {
         yRot -= 0.0006 * elapsed * IN.mdx();
         xRot -= 0.0006 * elapsed * IN.mdy();
     }
@@ -239,10 +243,34 @@ function update() {
     zoom += IN.mwd();
 
     if ( IN.wkp(IN.KEY_TILDE) ) {
-        log("output");
         output.enabled = !output.enabled;
         resize();
     }
+    
+    if ( IN.ikd(IN.KEY_W) ) {
+        player.pos.x += Math.sin(yRot) * 0.01 * elapsed;
+        player.pos.z -= Math.cos(yRot) * 0.01 * elapsed;
+        player.dir = -yRot + Math.PI;    
+    }
+    if ( IN.ikd(IN.KEY_S) ) {
+        player.pos.x -= Math.sin(yRot) * 0.01 * elapsed;
+        player.pos.z += Math.cos(yRot) * 0.01 * elapsed;
+        player.dir = -yRot;    
+    }
+    if ( IN.ikd(IN.KEY_A) ) {
+        player.pos.x -= Math.cos(yRot) * 0.01 * elapsed;
+        player.pos.z -= Math.sin(yRot) * 0.01 * elapsed;
+        player.dir = -yRot - Math.PI/2;    
+    }
+    
+    if ( IN.ikd(IN.KEY_D) ) {
+        player.pos.x += Math.cos(yRot) * 0.01 * elapsed;
+        player.pos.z += Math.sin(yRot) * 0.01 * elapsed;
+        player.dir = -yRot + Math.PI/2;    
+    }
+    
+    player.pos.y = PE.getHeight(player.pos.x, player.pos.z);
+    
 
     lastTime = timeNow;
 }
@@ -250,6 +278,8 @@ function update() {
 function draw() {
     if ( frame == 0 ) {
         mat4.identity(mvMatrix);
+        //gl.cullFace( gl.FRONT );
+        //gl.enable( gl.CULL_FACE );
     }
     if ( wasResize ) {
         mat4.perspective(45, canvas.width / canvas.height, 0.1, 2000.0, pMatrix);
@@ -257,11 +287,11 @@ function draw() {
     if ( !shaderProgram.ready ) return;
 
 
-    gl.uniform3f(shaderProgram.ambientColorUniform, 0.3, 0.3, 0.3);
-    gl.uniform3f(shaderProgram.directionalColorUniform, 0.8, 0.8, 0.8 );
+    gl.uniform3f(shaderProgram.ambientColorUniform, 0.5, 0.5, 0.5);
+    gl.uniform3f(shaderProgram.directionalColorUniform, 0.4, 0.4, 0.4 );
 
     var adjustedLD = vec3.create();
-    vec3.normalize([0.5, 0.5, -1.0], adjustedLD);
+    vec3.normalize([0.25, -1.0, 0.25], adjustedLD);
     vec3.scale(adjustedLD, -1);
     gl.uniform3fv(shaderProgram.lightingDirectionUniform, adjustedLD);
 
@@ -280,20 +310,27 @@ function draw() {
     OL.draw("skybox");
 
     pLastMatrix();
-
+    // camera movement
     mat4.translate(pMatrix, [0, 0, -zoom]);
     mat4.rotate(pMatrix, xRot, [1, 0, 0]);
     mat4.rotate(pMatrix, yRot, [0, 1, 0]);
+    mat4.translate(pMatrix, [-player.pos.x, -player.pos.y, -player.pos.z]);
     mat4.translate(pMatrix, [0, -1.8, 0]);
-
     setMatrixUniforms();
 
+    OL.draw("terrain");
+
+    //OL.draw("monkey");
 //    OL.draw("teapot");
 
-//    OL.draw("vader");
-    OL.draw("monkey");
 
-//    OL.draw("terrain");
+//    mat4.rotate(mvMatrix, -yRot-Math.PI, [0, 1, 0]);
+//    setMatrixUniforms();
+    
+    mat4.translate(mvMatrix, [player.pos.x, player.pos.y, player.pos.z]);
+    mat4.rotate(mvMatrix, player.dir, [0, 1, 0]);
+    setMatrixUniforms();
+    OL.draw("vader");
 
 
     pPopMatrix();
