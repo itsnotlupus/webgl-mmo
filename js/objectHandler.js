@@ -111,7 +111,7 @@ OL.unload = function(name) {
 }
 
 OL.draw = function(name) {
-    if ( !OL[name] ) throw "ERROR: OL.draw() - no such object with name: " + name;
+    if ( !OL[name] ) { log("ERROR: OL.draw() - no such object with name: " + name); return; }
     var o = OL[name];
     if ( !o.loaded ) return;
 

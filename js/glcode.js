@@ -20,6 +20,7 @@ var output;
 var wasResize = true;
 
 var player = new Object();
+var aa = new Array();
 
 function webGLStart() {
 
@@ -45,21 +46,18 @@ function webGLStart() {
 
     loadShaders();
 
+    NI.init('ws://130.83.20.18:8001');
     IN.init();
-    
     PE.init();
 
     OL.load("teapot", 'teapot.json');
     OL.load("skybox", 'skybox.json');
     OL.load("vader", 'vader.json');
+    OL.load("vader2", 'vader2.json');
     OL.load("terrain", 'terrain.json', PE.getData);
     OL.load("monkey", 'monkey.json');
 
-    player.pos = new Object();
-    player.pos.x = 0.0;
-    player.pos.y = 0.0;
-    player.pos.z = 0.0;
-    player.dir = 0.0;
+    player = newPlayer();
 
     tick();
 }
@@ -199,6 +197,13 @@ function pLastMatrix() {
     mat4.set(pMatrixStack[pMatrixStack.length-1],pMatrix);
 }
 
+function mvLastMatrix() {
+    if (mvMatrixStack.length == 0) {
+        throw "Invalid popMatrix!";
+    }
+    mat4.set(mvMatrixStack[mvMatrixStack.length-1],mvMatrix);
+}
+
 function setMatrixUniforms() {
     gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
     gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
@@ -227,7 +232,22 @@ var xRot = 0;
 var yRot = 0;
 var zRot = 0;
 
+function newPlayer() {
+    var p = new Object();
+    p.pos = new Object();
+    p.pos.x = 0.0;
+    p.pos.y = 0.0;
+    p.pos.z = 0.0;
+    p.dir = 0.0;
+    p.skin = "vader2";
+    p.ss = 1;
+    
+    return p;
+}
+
 function update() {
+    
+    var lp = [player.pos.x, player.pos.y, player.pos.z, player.dir];
 
     var timeNow = new Date().getTime();
     if (lastTime != 0) {
@@ -270,6 +290,51 @@ function update() {
     }
     
     player.pos.y = PE.getHeight(player.pos.x, player.pos.z);
+    
+    var ma = NI.getLast();
+    for (i in ma) {
+        var c = ma[i].substring(0, 4);
+        if ( c == 'NAP ' ) {    // new avatar position
+            var nap = ma[i].slice(4,ma[i].length);
+            nap = nap.split(',',5);
+            if ( !aa[nap[0]] ) aa[nap[0]] = newPlayer();
+            aa[nap[0]].pos = [];
+            aa[nap[0]].pos.x = nap[1];
+            aa[nap[0]].pos.y = nap[2];
+            aa[nap[0]].pos.z = nap[3];
+            aa[nap[0]].dir = nap[4];
+            
+        } else if ( c == 'ANS ' ) { // avatar new skin. id, skin
+            var alr = ma[i].slice(4,ma[i].length);
+            alr = alr.split(',',2);
+            if ( !aa[alr[0]] ) aa[alr[0]] = newPlayer();
+            aa[alr[0]].skin = ((alr[1]==0) ? "vader" : "vader2");
+            
+            if ( aa[alr[0]].ss == 0 )
+                AL.play(((aa[alr[0]].skin=="vader") ? 'on0.ogg' : 'off0.ogg'));
+            else
+                aa[alr[0]].ss = 0;
+                
+        } else if ( c == 'ALR ' ) { // avatar left realm. id
+            var alr = ma[i].slice(4,ma[i].length);
+            var ta = new Array();
+            for(x in aa)
+                if(x!=alr) { ta[x] = aa[x]; }
+            aa = ta;
+        } else {
+            log('got unknown code message: ' + ma[i]);
+        }
+    }    
+    
+    if ( lp[0] != player.pos.x || lp[1] != player.pos.y || lp[2] != player.pos.z || lp[3] != player.dir ) {
+        NI.send('MNP ' + player.pos.x + ',' + player.pos.y + ',' + player.pos.z + ',' + player.dir);
+    }
+    
+    if ( IN.wkp(IN.KEY_L) ) {
+        player.skin = (player.skin=="vader2") ? "vader" : "vader2";
+        NI.send('MNS ' + ((player.skin=="vader") ? 0 : 1));
+        AL.play(((player.skin=="vader") ? 'on0.ogg' : 'off0.ogg'));
+    }
     
 
     lastTime = timeNow;
@@ -330,7 +395,18 @@ function draw() {
     mat4.translate(mvMatrix, [player.pos.x, player.pos.y, player.pos.z]);
     mat4.rotate(mvMatrix, player.dir, [0, 1, 0]);
     setMatrixUniforms();
-    OL.draw("vader");
+    OL.draw(player.skin);
+    
+    for (i in aa) {
+        var p = aa[i];
+        
+        mvLastMatrix();    
+        mat4.translate(mvMatrix, [p.pos.x, p.pos.y, p.pos.z]);
+        mat4.rotate(mvMatrix, p.dir, [0, 1, 0]);
+        setMatrixUniforms();
+        
+        OL.draw(p.skin);        
+    }
 
 
     pPopMatrix();
