@@ -3,8 +3,9 @@
     padding:0px;
 }
 
-html {
+body {
     background-color: #000000;
+    overflow: hidden;
 }
 
 #output {
@@ -15,4 +16,33 @@ html {
     font-family: "Courier New";
     font-size: 12px;
     border: none;
+}
+
+#info {
+        position: absolute;
+        top: 0px; width: 100%;
+        color: #808080;
+        padding: 5px;
+        font-family: “helvetica neue”, helvetica, arial, sans-serif;
+        font-size: 13px;
+        text-align: center;
+}
+
+#info2 {
+        position: absolute;
+        bottom: 0px; width: 100%;
+        color: #808080;
+        padding: 5px;
+        font-family: “helvetica neue”, helvetica, arial, sans-serif;
+        font-size: 13px;
+        text-align: center;
+}
+
+a {
+        color: #000;
+        text-decoration: none;
+}
+
+a:hover {
+        color: #cbc407;
 }

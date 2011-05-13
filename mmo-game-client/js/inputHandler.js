@@ -81,7 +81,11 @@ IN.BUTTON_LEFT = 0;
 IN.BUTTON_MIDDLE = 1;
 IN.BUTTON_RIGHT = 2;
 
-IN.init = function() {
+IN.init = function( content ) {
+    
+    IN.content = content;
+    if (content == undefined)
+        IN.content = window;
 
     IN.kd = {};
     IN.kp = {};
@@ -104,6 +108,8 @@ IN.init = function() {
 
     IN.mwdq = 0;
     IN.pmwd = 0;
+    
+    IN.focus = true;
 
     window.oncontextmenu = function(){return false;};   // Right click menu suppresion
 
@@ -112,8 +118,9 @@ IN.init = function() {
             IN.kpq[e.keyCode] = true;
         IN.kd[e.keyCode] = true;
 
-        if ( e.keyCode != IN.KEY_F11 && e.keyCode != IN.KEY_F5 )
+        if ( e.keyCode != IN.KEY_F11 && e.keyCode != IN.KEY_F5 && e.keyCode != IN.KEY_J )
             return false;
+        return true;
     }
     window.onkeyup = function(e) {
         IN.kd[e.keyCode] = false;
@@ -126,8 +133,10 @@ IN.init = function() {
                 IN.krq[kc] = true;
             IN.kd[kc] = false;
         }
+        IN.focus = false;
     }
     window.onfocus = function() {
+        IN.focus = true;
     }
 
     window.onmousedown = function(e) {
@@ -144,13 +153,20 @@ IN.init = function() {
         IN.brq[e.button] = true;
     }
     window.onmousemove = function(e) {
-        IN.pmpx = e.x;
-        IN.pmpy = e.y;
+        IN.pmpx = e.clientX;
+        IN.pmpy = e.clientY;
+    //    log("onmousemove" + e);
     }
+    
+    // woeks on Chrome
     window.addEventListener('mousewheel', function(e){
         IN.mwdq += e.wheelDelta / Math.abs(e.wheelDelta);
     }, false);
-
+    
+    // works on Firefox
+    window.addEventListener('DOMMouseScroll', function(e){
+        IN.mwdq -= e.detail / Math.abs(e.detail);
+    }, false);
 }
 
 IN.handleInput = function() {
@@ -188,4 +204,6 @@ IN.mdx = function() { return IN.pmdx; }
 IN.mdy = function() { return IN.pmdy; }
 
 IN.mwd = function() { return IN.pmwd; }
+
+IN.hfcs = function() { return IN.focus; }
 

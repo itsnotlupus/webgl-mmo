@@ -11,8 +11,6 @@ uniform vec3 uAmbColor;
 uniform vec3 uDirColor;
 uniform vec3 uLightDir;
 
-uniform bool uUseLight;
-
 varying vec2 vTexCoord;
 varying vec3 vLightWeight;
 
@@ -21,11 +19,8 @@ void main()
     gl_Position = uPMatrix * uMVMatrix * vec4(aVerPosition, 1.0);
     vTexCoord = aTexCoord;
 
-    if (!uUseLight) {
-        vLightWeight = vec3(1.0, 1.0, 1.0);
-    } else {
-        vec3 transformedNormal = uNMatrix * aVerNormal;
-        float dirLightWeight = max(dot(transformedNormal, uLightDir), 0.0);
-        vLightWeight = uAmbColor + uDirColor * dirLightWeight;
-    }
+    vec3 transformedNormal = uNMatrix * aVerNormal;
+    float dirLightWeight = max(dot(transformedNormal, uLightDir), 0.0);
+    vLightWeight = uAmbColor + uDirColor * dirLightWeight;
+        
 }
