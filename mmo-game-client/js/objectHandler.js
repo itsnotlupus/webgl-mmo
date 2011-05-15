@@ -23,6 +23,7 @@ OL.load = function(name, file, sp, drcb) {
             OL.handleLoadedTexture(o.tex1);
         }
         o.tex1.img.src = 'models/maptest.png';
+        lm.newRes(o.tex1.img.src);
         
         o.tex2 = gl.createTexture();
         o.tex2.img = new Image();
@@ -30,6 +31,7 @@ OL.load = function(name, file, sp, drcb) {
             OL.handleLoadedTexture(o.tex2);
         }
         o.tex2.img.src = 'models/crate.gif';
+        lm.newRes(o.tex2.img.src);
     }
     
     var lpi = o.file.lastIndexOf('.');
@@ -39,18 +41,22 @@ OL.load = function(name, file, sp, drcb) {
     if ( o.ext == 'json' ) {
         var request = new XMLHttpRequest();
         request.open("GET", 'models/'+o.file);
+        lm.newRes('models/'+o.file);
         request.onreadystatechange = function () {
             if (request.readyState == 4) {
                 OL.handleLoaded(o, JSON.parse(request.responseText), drcb);
+                lm.gotRes('models/'+o.file);
             }
         }
         request.send();
     } else if ( o.ext == 'obj' ) {
         var request = new XMLHttpRequest();
         request.open("GET", 'models/'+o.file);
+        lm.newRes('models/'+o.file);
         request.onreadystatechange = function () {
             if (request.readyState == 4) {
                 OL.handleLoadedObj(o, request.responseText, drcb);
+                lm.gotRes('models/'+o.file);
             }
         }
         request.send();
@@ -73,6 +79,7 @@ OL.handleLoaded = function( o, data, drcb ) {
                 OL.handleLoadedTexture(o.tex);
             }
             o.tex.img.src = 'models/'+data.tex;
+            lm.newRes(o.tex.img.src);
         }
 
         o.tcb = gl.createBuffer();
@@ -134,6 +141,7 @@ OL.handleLoaded = function( o, data, drcb ) {
 OL.handleLoadedObj = function( o, txt, drcb ) {
     
     var la = txt.split('\n');
+    var lp;
     
     o.va = [];
     o.ta = [];
@@ -185,9 +193,13 @@ OL.handleLoadedObj = function( o, txt, drcb ) {
             
             var request = new XMLHttpRequest();
             request.open("GET", 'models/'+lp[1]);
+            var url = 'models/'+lp[1];
+            lm.newRes(url);
+            
             request.onreadystatechange = function () {
                 if (request.readyState == 4) {
-                    OL.handleLoadedMtl(o, request.responseText);
+                    OL.handleLoadedMtl(o, request.responseText, 'models/'+lp[1]);
+                    lm.gotRes(url);
                 }
             }
             request.send();
@@ -264,9 +276,10 @@ OL.handleLoadedObj = function( o, txt, drcb ) {
     OL.handleLoaded(o, data, drcb );
 }
 
-OL.handleLoadedMtl = function(o, txt) {
+OL.handleLoadedMtl = function(o, txt, url) {
     
     var la = txt.split('\n');
+    var lp;
     
     for ( n in la ) {
         if ( la[n].length == 0 ) continue;
@@ -283,9 +296,8 @@ OL.handleLoadedMtl = function(o, txt) {
                 OL.handleLoadedTexture(o.tex);
             }
             o.tex.img.src = 'models/'+lp[1];
-            
-        }
-        
+            lm.newRes(o.tex.img.src);            
+        }        
     }
 }
 
@@ -298,6 +310,7 @@ OL.handleLoadedTexture = function(tex) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
     gl.generateMipmap(gl.TEXTURE_2D);
     gl.bindTexture(gl.TEXTURE_2D, null);
+    lm.gotRes(tex.img.src);
 }
 
 OL.unload = function(name) {
@@ -375,6 +388,54 @@ OL.draw = function(name) {
         
         gl.drawArrays(gl.TRIANGLES, 0, o.vpb.ni);
     }
-
-
+    
 }
+
+function LM(out) {
+    this.pending = new Array();
+    this.finished = false;
+    
+    this.fin = 0;
+    this.all = 0;
+    
+    this.cbf = null;
+    
+    this.output = out;
+    this.text = this.output.innerHTML;
+    this.output.innerHTML = 'LOADING';
+    
+//    log("INFO: new Load Manager");
+}
+
+LM.prototype.newRes = function ( name ) {
+    this.all++;
+//    log('INFO: LM.newRes: ' + name + ' ' + this.fin + '/' + this.all);
+    if ( this.fin < this.all ) this.finished = false; 
+}
+
+LM.prototype.gotRes = function ( name ) {
+    this.fin++;
+//    log('INFO: LM.gotRes: ' + name + ' ' + this.fin + '/' + this.all);
+    
+    if ( this.fin == this.all ) {
+        this.output.innerHTML = this.text;
+        this.finished = true;
+        if ( this.cbf !== null ) {
+            var tmp = this.cbf;
+            this.cbf = null;
+            tmp();
+        }
+    } else {
+        this.output.innerHTML = '.' + this.output.innerHTML + '.';
+    }
+}
+
+LM.prototype.stthrd = function( cbf ) {
+    if ( this.finished )
+        cbf();
+    else
+        this.cbf = cbf;
+}
+
+
+

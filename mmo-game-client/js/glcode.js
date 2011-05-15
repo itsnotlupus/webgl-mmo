@@ -7,10 +7,12 @@
  */
 
 var canvas;
+var info2;
 var gl;
 var csp = 0;
 var shaderProgram;
 var mtsp;
+var lm;
 
 var frame = 0;
 
@@ -28,7 +30,8 @@ function webGLStart() {
 
     output = document.getElementById('output');
     output.height = 150;
-    output.enabled = true;
+    output.enabled = false;
+    info2 = document.getElementById('info2');
 
     canvas = document.getElementById('canvas');
     try {
@@ -37,7 +40,7 @@ function webGLStart() {
     } catch (e) {}
     if (!gl) {
         log("ERROR: Your broser does not seem to support WebGL!");
-        log("Visit http://code.google.com/p/webgl-mmo/ for browser information");
+        info2.innerHTML = 'Visit http://code.google.com/p/webgl-mmo/ for browser information';
         alert("Your browser does not seem to support WebGL!");
         return;
     } else {
@@ -46,11 +49,11 @@ function webGLStart() {
 
     window.addEventListener('resize', function(){resize();}, false);
     
-    log('INFO: Loading...');
+    lm = new LM(info2);
 
     gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
-
+    
     shaderProgram = gl.createProgram();
     loadShaders(shaderProgram, 'vshader.sh', 'fshader.sh');
     mtsp = gl.createProgram();
@@ -61,9 +64,11 @@ function webGLStart() {
     PE.init();
     
     
-    OL.load('mapas', 'maptest.obj', mtsp, PE.getData);
+    OL.load('mapas', 'BIGmap.obj', mtsp, PE.getData);
+//    OL.load('bigmap', 'bigmap.obj', mtsp);
 
     OL.load("vsky", 'vsky.obj', shaderProgram);
+    OL.load('water', 'water.obj', shaderProgram);
 //    OL.load("skybox", 'skybox.json', shaderProgram);
     OL.load("vader", 'vader.json', shaderProgram);
     OL.load("vader2", 'vader2.json', shaderProgram);
@@ -76,7 +81,7 @@ function webGLStart() {
 
     player = newPlayer();
 
-    tick();
+    lm.stthrd(tick);
 }
 
 function resize() {
@@ -93,9 +98,10 @@ function resize() {
     wasResize = true;
 }
 
-function log(text) {
+function log(text, skipnl) {
 //    if ( !output.enabled || !output ) return;
-    output.innerHTML += text + "\n";
+    if ( skipnl === undefined )    output.innerHTML += "\n" + text;
+    else                           output.innerHTML += text;
     output.scrollTop = output.scrollHeight;
 }
 
@@ -109,12 +115,14 @@ function loadShaders(sp, vsf, fsf) {
 }
 
 function getShader(sp, type, url) {
+    lm.newRes(url);
     var request = new XMLHttpRequest();
     request.open("GET", url);
     request.onreadystatechange = function () {
         if (request.readyState == 4) {
             loadShader(sp, type, request.responseText, url);
-        }
+            lm.gotRes(url);
+        }        
     }
     request.send();
 }
@@ -298,6 +306,8 @@ function newPlayer() {
 
 var cp = vec3.create();
 var spos = 0;
+var speed = 0.11;
+var zoommax = 20;
 
 function update() {
     
@@ -334,7 +344,7 @@ function update() {
     zoom += IN.mwd(); // mouse wheel diference
     if ( IN.mwd() !== 0 ) cmove = true;
     if ( zoom < 1.5 ) zoom = 1.5;
-    if ( zoom > 20 ) zoom = 20;
+    if ( zoom > zoommax ) zoom = zoommax;
 
     if ( IN.wkp(IN.KEY_TILDE) ) {
         output.enabled = !output.enabled;
@@ -346,27 +356,27 @@ function update() {
     }
     
     if ( IN.ikd(IN.KEY_W) ) {
-        player.pos.x += Math.sin(yRot) * 0.01 * elapsed;
-        player.pos.z -= Math.cos(yRot) * 0.01 * elapsed;
+        player.pos.x += Math.sin(yRot) * speed * elapsed;
+        player.pos.z -= Math.cos(yRot) * speed * elapsed;
         player.dir = -yRot + Math.PI;
         move = true;
     }
     if ( IN.ikd(IN.KEY_S) ) {
-        player.pos.x -= Math.sin(yRot) * 0.01 * elapsed;
-        player.pos.z += Math.cos(yRot) * 0.01 * elapsed;
+        player.pos.x -= Math.sin(yRot) * speed * elapsed;
+        player.pos.z += Math.cos(yRot) * speed * elapsed;
         player.dir = -yRot;    
         move = true;
     }
     if ( IN.ikd(IN.KEY_A) ) {
-        player.pos.x -= Math.cos(yRot) * 0.01 * elapsed;
-        player.pos.z -= Math.sin(yRot) * 0.01 * elapsed;
+        player.pos.x -= Math.cos(yRot) * speed * elapsed;
+        player.pos.z -= Math.sin(yRot) * speed * elapsed;
         player.dir = -yRot - Math.PI/2; 
         move = true;   
     }
     
     if ( IN.ikd(IN.KEY_D) ) {
-        player.pos.x += Math.cos(yRot) * 0.01 * elapsed;
-        player.pos.z += Math.sin(yRot) * 0.01 * elapsed;
+        player.pos.x += Math.cos(yRot) * speed * elapsed;
+        player.pos.z += Math.sin(yRot) * speed * elapsed;
         player.dir = -yRot + Math.PI/2;  
         move = true;  
     }
@@ -441,6 +451,11 @@ function update() {
     
     if ( IN.wkp(IN.KEY_C) ) {   // shader options for debuging purposes
         OL['mapas'].sp = OL['mapas'].sp === shaderProgram ? mtsp : shaderProgram;
+//        OL['lowmap'].sp = OL['lowmap'].sp === shaderProgram ? mtsp : shaderProgram;
+    }
+    
+    if ( IN.wkp(IN.KEY_SPACE) ) {
+        log(player.pos.x + ' ' + player.pos.z);
     }
 
     lastTime = timeNow;
@@ -453,7 +468,7 @@ function draw() {
         //gl.enable( gl.CULL_FACE );
     }
     if ( wasResize ) {
-        mat4.perspective(45, canvas.width / canvas.height, 0.1, 2000.0, pMatrix);
+        mat4.perspective(45, canvas.width / canvas.height, 0.1, 15000.0, pMatrix);
     }
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -467,8 +482,8 @@ function draw() {
 
     mat4.rotate(pMatrix, xRot, [1, 0, 0]);
     mat4.rotate(pMatrix, yRot, [0, 1, 0]);
+    mat4.translate(pMatrix, [0, cp[1], 0]);
 
-//    OL.draw("skybox");
     OL.draw("vsky");
 
     pLastMatrix();
@@ -479,6 +494,8 @@ function draw() {
 
     //OL.draw("terrain");
     OL.draw("mapas");
+    OL.draw('water');
+//    OL.draw("bigmap");
 
     //OL.draw("monkey");
 //    OL.draw("teapot");

@@ -1,18 +1,18 @@
 * {
     margin: 0px;
-    padding:0px;
+    padding: 0px;
 }
 
 body {
-    background-color: #000000;
+    background-color: #aaaaaa;
     overflow: hidden;
 }
 
 #output {
     width:100%;
     height: 10px;
-    color: #aaaaaa;
-    background-color: #000000;
+    color: #101010;
+    background-color: #aaaaaa;
     font-family: "Courier New";
     font-size: 12px;
     border: none;
@@ -31,7 +31,7 @@ body {
 #info2 {
         position: absolute;
         bottom: 0px; width: 100%;
-        color: #808080;
+        color: #101010;
         padding: 5px;
         font-family: “helvetica neue”, helvetica, arial, sans-serif;
         font-size: 13px;
